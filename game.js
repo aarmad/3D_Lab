@@ -204,12 +204,36 @@ class MazeScene {
     }
 
     // ── Player ────────────────────────────────────────────────
+    // ── Player ────────────────────────────────────────────────
     _initPlayer() {
         this.player = {
             pos: new THREE.Vector3(this.cellSize * 1.5, 1.5, this.cellSize * 1.5),
             yaw: 0,
             pitch: 0,
         };
+
+        // --- AVATAR (Visible en Top-Down) ---
+        this.playerMarker = new THREE.Group();
+        const bodyMat = new THREE.MeshToonMaterial({ color: 0xFF6B00, gradientMap: CelMaterials._gradientMap(4) });
+
+        // Corps
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.6, 12), bodyMat);
+        body.position.y = 0.8;
+        this.playerMarker.add(body);
+        addOutline(body, this.playerMarker, 0.05);
+
+        // Tête
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), bodyMat);
+        head.position.y = 1.8;
+        this.playerMarker.add(head);
+        addOutline(head, this.playerMarker, 0.05);
+
+        // Visière/Yeux (pour la direction)
+        const visor = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.1, 0.2), new THREE.MeshBasicMaterial({ color: 0x00FFFF }));
+        visor.position.set(0, 1.8, -0.25);
+        this.playerMarker.add(visor);
+
+        this.scene.add(this.playerMarker);
 
         this.cameraRig = new THREE.Object3D();
         this.scene.add(this.cameraRig);
@@ -222,76 +246,25 @@ class MazeScene {
     _buildWeapon() {
         this.weaponGroup = new THREE.Group();
         this.camera.add(this.weaponGroup);
-        // Position style Valorant : plus centré, légèrement en bas à droite
-        this.weaponGroup.position.set(0.25, -0.25, -0.5);
+        // Position des mains : en bas, légèrement écartées
+        this.weaponGroup.position.set(0, -0.3, -0.5);
 
-        // --- GUN ---
-        const gunGroup = new THREE.Group();
-        this.weaponGroup.add(gunGroup);
+        const handGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+        const handMat = new THREE.MeshToonMaterial({ color: 0xC68642, gradientMap: CelMaterials._gradientMap(3) });
 
-        // Main Body
-        const body = new THREE.Mesh(
-            new THREE.BoxGeometry(0.12, 0.15, 0.4),
-            new THREE.MeshToonMaterial({ color: 0x222222, gradientMap: CelMaterials._gradientMap(4) })
-        );
-        body.position.set(0, 0, 0);
-        gunGroup.add(body);
-        addOutline(body, gunGroup, 0.03);
-
-        // Top Cover (Orange accent)
-        const cover = new THREE.Mesh(
-            new THREE.BoxGeometry(0.13, 0.04, 0.41),
-            new THREE.MeshToonMaterial({ color: 0xFF6B00, gradientMap: CelMaterials._gradientMap(3) })
-        );
-        cover.position.set(0, 0.095, 0);
-        gunGroup.add(cover);
-        addOutline(cover, gunGroup, 0.03);
-
-        // Stripe Detail
-        const stripe = new THREE.Mesh(
-            new THREE.BoxGeometry(0.14, 0.045, 0.15),
-            new THREE.MeshToonMaterial({ color: 0xFFD700, gradientMap: CelMaterials._gradientMap(2) })
-        );
-        stripe.position.set(0, 0.095, 0.05);
-        gunGroup.add(stripe);
-
-        // Barrel
-        const barrel = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.04, 0.04, 0.2, 8),
-            new THREE.MeshToonMaterial({ color: 0x111111, gradientMap: CelMaterials._gradientMap(3) })
-        );
-        barrel.rotation.x = Math.PI / 2;
-        barrel.position.set(0, 0.02, -0.3);
-        gunGroup.add(barrel);
-        addOutline(barrel, gunGroup, 0.04);
-
-        // --- HANDS (Valorant Style) ---
-
-        // Right Hand (Grip - Trigger)
-        const rightHand = new THREE.Mesh(
-            new THREE.BoxGeometry(0.12, 0.14, 0.16),
-            new THREE.MeshToonMaterial({ color: 0xC68642, gradientMap: CelMaterials._gradientMap(3) })
-        );
-        rightHand.position.set(0, -0.08, 0.15);
-        rightHand.rotation.x = -0.2;
-        rightHand.rotation.z = -0.1;
-        this.weaponGroup.add(rightHand);
-        addOutline(rightHand, this.weaponGroup, 0.04);
-
-        // Left Hand (Foregrip - Holding barrel)
-        const leftHand = new THREE.Mesh(
-            new THREE.BoxGeometry(0.13, 0.12, 0.18),
-            new THREE.MeshToonMaterial({ color: 0xC68642, gradientMap: CelMaterials._gradientMap(3) })
-        );
-        leftHand.position.set(0.05, -0.05, -0.15); // Supporting the front
-        leftHand.rotation.y = 0.4;
-        leftHand.rotation.x = 0.4;
-        leftHand.rotation.z = 0.2;
+        // Main Gauche
+        const leftHand = new THREE.Mesh(handGeo, handMat);
+        leftHand.position.set(-0.25, -0.1, 0.1);
+        leftHand.rotation.set(0.2, -0.1, 0.1);
         this.weaponGroup.add(leftHand);
-        addOutline(leftHand, this.weaponGroup, 0.04);
+        addOutline(leftHand, this.weaponGroup, 0.03);
 
-        // Gun follows a slight angle
-        gunGroup.rotation.y = 0.05;
+        // Main Droite
+        const rightHand = new THREE.Mesh(handGeo, handMat);
+        rightHand.position.set(0.25, -0.1, 0.1);
+        rightHand.rotation.set(0.2, 0.1, -0.1);
+        this.weaponGroup.add(rightHand);
+        addOutline(rightHand, this.weaponGroup, 0.03);
 
         this.weaponGroup.userData.basePos = this.weaponGroup.position.clone();
         this.weaponGroup.userData.bobTime = 0;
@@ -596,6 +569,13 @@ class MazeScene {
         this.cameraRig.position.copy(this.player.pos);
         this.cameraRig.rotation.y = this.player.yaw;
         this.camera.rotation.x = this.player.pitch;
+
+        // ---- Player Marker Update ----
+        if (this.playerMarker) {
+            this.playerMarker.position.copy(this.player.pos);
+            this.playerMarker.rotation.y = this.player.yaw;
+            this.playerMarker.visible = (GameState.viewMode !== 'fps');
+        }
 
         // ---- Animate lights ----
         const t = Date.now();
