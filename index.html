@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MAZE RUNNER X — Cel-Shaded Chaos</title>
+    <meta name="description" content="Labyrinthe 3D immersif en style Borderlands / animé cel-shading avec Three.js" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bangers&family=Oswald:wght@700&family=Permanent+Marker&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+    <!-- ===== MENU PRINCIPAL ===== -->
+    <div id="main-menu" class="screen active">
+        <div class="menu-bg-anim"></div>
+        <div class="menu-content">
+            <div class="logo-container">
+                <div class="logo-shadow">MAZE RUNNER X</div>
+                <h1 class="logo-title">MAZE RUNNER X</h1>
+                <div class="logo-subtitle">CEL-SHADED CHAOS</div>
+            </div>
+            <div class="menu-buttons">
+                <button class="btn-comic btn-primary" id="btn-solo">
+                    <span class="btn-icon">⚡</span> SOLO MISSION
+                </button>
+                <button class="btn-comic btn-secondary" id="btn-multi">
+                    <span class="btn-icon">💥</span> SPLIT-SCREEN DUEL
+                </button>
+                <button class="btn-comic btn-tertiary" id="btn-settings">
+                    <span class="btn-icon">⚙</span> RÉGLAGES
+                </button>
+            </div>
+            <div class="menu-graffiti">
+                <span class="graffiti-tag">PLAY HARD</span>
+                <span class="graffiti-tag">OR DIE LOST</span>
+            </div>
+        </div>
+        <div class="scanlines"></div>
+    </div>
+
+    <!-- ===== ÉCRAN DE JEU ===== -->
+    <div id="game-screen" class="screen">
+
+        <!-- HUD Principal -->
+        <div id="hud">
+            <div id="hud-timer" class="hud-panel">
+                <div class="timer-label">TEMPS</div>
+                <div id="timer-display" class="timer-value">00:00</div>
+                <div class="timer-ms" id="timer-ms">00</div>
+            </div>
+            <div id="hud-center">
+                <div id="level-badge">NIVEAU <span id="level-num">1</span></div>
+                <div id="maze-name">ZONE ALPHA</div>
+            </div>
+            <div id="hud-score" class="hud-panel">
+                <div class="timer-label">SCORE</div>
+                <div id="score-display" class="timer-value">0</div>
+            </div>
+        </div>
+
+        <!-- Crosshair FPS -->
+        <div id="crosshair">
+            <div class="ch-line ch-top"></div>
+            <div class="ch-line ch-bottom"></div>
+            <div class="ch-line ch-left"></div>
+            <div class="ch-line ch-right"></div>
+            <div class="ch-dot"></div>
+        </div>
+
+        <!-- Minimap -->
+        <div id="minimap-container">
+            <div class="minimap-label">CARTE</div>
+            <canvas id="minimap" width="150" height="150"></canvas>
+        </div>
+
+        <!-- Vue mode -->
+        <div id="view-toggle-btn" class="comic-btn" title="Changer de vue">
+            <span id="view-icon">👁</span>
+            <span id="view-label">FPS</span>
+        </div>
+
+        <!-- Canvas Three.js -->
+        <canvas id="game-canvas"></canvas>
+
+        <!-- Effet ink splash overlay -->
+        <div id="ink-overlay"></div>
+
+        <!-- Contrôles mobiles -->
+        <div id="mobile-controls">
+            <div id="joystick-zone">
+                <div id="joystick-base">
+                    <div id="joystick-knob"></div>
+                </div>
+            </div>
+            <div id="action-buttons">
+                <button class="action-btn" id="btn-jump">↑</button>
+            </div>
+        </div>
+
+        <!-- Pause -->
+        <button id="pause-btn" class="comic-btn">⏸ PAUSE</button>
+    </div>
+
+    <!-- ===== SPLIT-SCREEN DUEL ===== -->
+    <div id="split-screen" class="screen">
+        <div class="split-panel" id="panel-p1">
+            <canvas id="canvas-p1"></canvas>
+            <div class="split-hud">
+                <div class="split-player-tag">P1</div>
+                <div class="split-timer" id="timer-p1">00:00</div>
+            </div>
+            <div class="split-label">JOUEUR 1</div>
+        </div>
+        <div class="split-divider">
+            <div class="split-vs">VS</div>
+        </div>
+        <div class="split-panel" id="panel-p2">
+            <canvas id="canvas-p2"></canvas>
+            <div class="split-hud">
+                <div class="split-player-tag">P2</div>
+                <div class="split-timer" id="timer-p2">00:00</div>
+            </div>
+            <div class="split-label">JOUEUR 2</div>
+        </div>
+        <!-- Winner banner -->
+        <div id="split-winner"
+            style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Bangers',cursive;font-size:3rem;color:#FFD700;background:rgba(0,0,0,0.85);border:4px solid #FFD700;padding:1rem 2rem;text-align:center;z-index:30;letter-spacing:4px;text-shadow:0 0 20px #FFD700;">
+        </div>
+        <button id="split-back-btn" class="btn-comic btn-back">← MENU</button>
+    </div>
+
+    <!-- ===== ÉCRAN VICTOIRE ===== -->
+    <div id="victory-screen" class="screen">
+        <div class="victory-content">
+            <div class="victory-bang">BOOM!</div>
+            <h2 class="victory-title">LABYRINTHE VAINCU!</h2>
+            <div class="victory-stats">
+                <div class="stat-item">
+                    <span class="stat-label">TEMPS</span>
+                    <span class="stat-value" id="final-time">--:--</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">SCORE</span>
+                    <span class="stat-value" id="final-score">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">RANG</span>
+                    <span class="stat-value" id="final-rank">S</span>
+                </div>
+            </div>
+            <div class="victory-buttons">
+                <button class="btn-comic btn-primary" id="btn-next-level">NIVEAU SUIVANT ⚡</button>
+                <button class="btn-comic btn-secondary" id="btn-retry">REJOUER 🔄</button>
+                <button class="btn-comic btn-tertiary" id="btn-menu-victory">MENU 🏠</button>
+            </div>
+        </div>
+        <div class="victory-particles" id="victory-particles"></div>
+    </div>
+
+    <!-- ===== PAUSE MENU ===== -->
+    <div id="pause-menu" class="screen">
+        <div class="pause-content">
+            <h2 class="pause-title">PAUSE</h2>
+            <button class="btn-comic btn-primary" id="btn-resume">▶ REPRENDRE</button>
+            <button class="btn-comic btn-secondary" id="btn-restart">🔄 RECOMMENCER</button>
+            <button class="btn-comic btn-tertiary" id="btn-menu-pause">🏠 MENU</button>
+        </div>
+    </div>
+
+    <!-- ===== SETTINGS ===== -->
+    <div id="settings-screen" class="screen">
+        <div class="settings-content">
+            <h2 class="settings-title">⚙ RÉGLAGES</h2>
+            <div class="setting-row">
+                <label class="setting-label">SENSIBILITÉ SOURIS</label>
+                <input type="range" id="sensitivity-slider" min="0.5" max="5" step="0.1" value="2"
+                    class="comic-slider" />
+                <span id="sensitivity-val">2.0</span>
+            </div>
+            <div class="setting-row">
+                <label class="setting-label">VITESSE JOUEUR</label>
+                <input type="range" id="speed-slider" min="1" max="10" step="0.5" value="5" class="comic-slider" />
+                <span id="speed-val">5.0</span>
+            </div>
+            <div class="setting-row">
+                <label class="setting-label">MOTION LINES</label>
+                <button class="toggle-btn active" id="toggle-motion">ON</button>
+            </div>
+            <div class="setting-row">
+                <label class="setting-label">TAILLE LABYRINTHE</label>
+                <select id="maze-size-select" class="comic-select">
+                    <option value="11">PETIT (11×11)</option>
+                    <option value="15">MOYEN (15×15)</option>
+                    <option value="19" selected>GRAND (19×19)</option>
+                    <option value="25">ÉPIQUE (25×25)</option>
+                    <option value="35">MONSTRE (35×35)</option>
+                </select>
+            </div>
+            <button class="btn-comic btn-primary" id="btn-settings-back">← RETOUR</button>
+        </div>
+    </div>
+
+    <!-- Pointer lock overlay -->
+    <div id="pointer-lock-overlay" class="hidden">
+        <div class="lock-content">
+            <div class="lock-icon">🎮</div>
+            <p>Cliquez pour capturer la souris</p>
+            <p class="lock-hint">ESC = Pause | TAB = Vue</p>
+        </div>
+    </div>
+
+    <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+    <script type="module" src="game.js"></script>
+</body>
+
+</html>
