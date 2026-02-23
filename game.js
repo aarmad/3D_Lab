@@ -208,6 +208,9 @@ class MazeScene {
             pos: new THREE.Vector3(this.cellSize * 1.5, 1.5, this.cellSize * 1.5),
             yaw: 0,
             pitch: 0,
+            velY: 0,
+            isGrounded: true,
+            walkTime: 0
         };
 
         // --- AVATAR HUMANOÏDE (Détaillé) ---
@@ -234,27 +237,27 @@ class MazeScene {
 
         // Bras
         const armGeo = new THREE.BoxGeometry(0.2, 0.8, 0.2);
-        const lArm = new THREE.Mesh(armGeo, mat);
-        lArm.position.set(-0.45, 1.1, 0);
-        this.playerMarker.add(lArm);
-        addOutline(lArm, this.playerMarker, 0.05);
+        this.lArm = new THREE.Mesh(armGeo, mat);
+        this.lArm.position.set(-0.45, 1.1, 0);
+        this.playerMarker.add(this.lArm);
+        addOutline(this.lArm, this.playerMarker, 0.05);
 
-        const rArm = new THREE.Mesh(armGeo, mat);
-        rArm.position.set(0.45, 1.1, 0);
-        this.playerMarker.add(rArm);
-        addOutline(rArm, this.playerMarker, 0.05);
+        this.rArm = new THREE.Mesh(armGeo, mat);
+        this.rArm.position.set(0.45, 1.1, 0);
+        this.playerMarker.add(this.rArm);
+        addOutline(this.rArm, this.playerMarker, 0.05);
 
         // Jambes
         const legGeo = new THREE.BoxGeometry(0.25, 0.85, 0.25);
-        const lLeg = new THREE.Mesh(legGeo, mat);
-        lLeg.position.set(-0.2, 0.4, 0);
-        this.playerMarker.add(lLeg);
-        addOutline(lLeg, this.playerMarker, 0.05);
+        this.lLeg = new THREE.Mesh(legGeo, mat);
+        this.lLeg.position.set(-0.2, 0.4, 0);
+        this.playerMarker.add(this.lLeg);
+        addOutline(this.lLeg, this.playerMarker, 0.05);
 
-        const rLeg = new THREE.Mesh(legGeo, mat);
-        rLeg.position.set(0.2, 0.4, 0);
-        this.playerMarker.add(rLeg);
-        addOutline(rLeg, this.playerMarker, 0.05);
+        this.rLeg = new THREE.Mesh(legGeo, mat);
+        this.rLeg.position.set(0.2, 0.4, 0);
+        this.playerMarker.add(this.rLeg);
+        addOutline(this.rLeg, this.playerMarker, 0.05);
 
         this.scene.add(this.playerMarker);
 
@@ -558,12 +561,39 @@ class MazeScene {
         const S = GameState.settings;
         const sens = S.sensitivity * 0.0018;
 
-        // ---- Mouse look (FPS only, P1 only) ----
+        // ---- Jumping ----
+        const jumpKey = (this.playerIndex === 0) ? 'Space' : 'KeyM';
+        if (this.keys[jumpKey] && this.player.isGrounded) {
+            this.player.velY = 7.5;
+            this.player.isGrounded = false;
+        }
+
+        // Gravity
+        this.player.velY -= 20 * dt;
+        this.player.pos.y += this.player.velY * dt;
+
+        if (this.player.pos.y <= 1.5) {
+            this.player.pos.y = 1.5;
+            this.player.velY = 0;
+            this.player.isGrounded = true;
+        }
+
+        // ---- Mouse/Key look ----
         if (this.mouse.locked && GameState.viewMode === 'fps' && this.playerIndex === 0) {
             this.player.yaw -= this.mouse.dx * sens;
             this.player.pitch -= this.mouse.dy * sens;
             this.player.pitch = Math.max(-Math.PI / 2.8, Math.min(Math.PI / 2.8, this.player.pitch));
         }
+
+        // P2 Keyboard Look (Pitch & Yaw)
+        if (this.playerIndex === 1 && GameState.viewMode === 'fps') {
+            if (this.keys['ArrowLeft']) this.player.yaw += 2.5 * dt;
+            if (this.keys['ArrowRight']) this.player.yaw -= 2.5 * dt;
+            if (this.keys['ArrowUp']) this.player.pitch += 1.8 * dt;
+            if (this.keys['ArrowDown']) this.player.pitch -= 1.8 * dt;
+            this.player.pitch = Math.max(-Math.PI / 2.8, Math.min(Math.PI / 2.8, this.player.pitch));
+        }
+
         this.mouse.dx = 0;
         this.mouse.dy = 0;
 
@@ -593,18 +623,13 @@ class MazeScene {
             if (this.keys['KeyA']) { moveDir.addScaledVector(rightVec, -1); moved = true; }
             if (this.keys['KeyD']) { moveDir.addScaledVector(rightVec, 1); moved = true; }
         } else {
-            // Player 2 controls
-            if (this.keys['KeyI'] || this.keys['ArrowUp']) { moveDir.addScaledVector(fwdVec, 1); moved = true; }
-            if (this.keys['KeyK'] || this.keys['ArrowDown']) { moveDir.addScaledVector(fwdVec, -1); moved = true; }
-            if (this.keys['KeyJ'] || this.keys['ArrowLeft']) { moveDir.addScaledVector(rightVec, -1); moved = true; }
-            if (this.keys['KeyL'] || this.keys['ArrowRight']) { moveDir.addScaledVector(rightVec, 1); moved = true; }
+            // Player 2 controls (Arrows now for Look, IJKL for move)
+            if (this.keys['KeyI']) { moveDir.addScaledVector(fwdVec, 1); moved = true; }
+            if (this.keys['KeyK']) { moveDir.addScaledVector(fwdVec, -1); moved = true; }
+            if (this.keys['KeyJ']) { moveDir.addScaledVector(rightVec, -1); moved = true; }
+            if (this.keys['KeyL']) { moveDir.addScaledVector(rightVec, 1); moved = true; }
 
             // Automatic rotation for P2 in Top-Down is handled below. 
-            // In FPS, P2 still needs manual rotation keys if mouse is disabled.
-            if (!isTopDown) {
-                if (this.keys['ArrowLeft'] || this.keys['KeyJ']) this.player.yaw += 0.05;
-                if (this.keys['ArrowRight'] || this.keys['KeyL']) this.player.yaw -= 0.05;
-            }
         }
 
         if (moveDir.lengthSq() > 0) {
@@ -643,12 +668,27 @@ class MazeScene {
         this.cameraRig.rotation.y = this.player.yaw;
         this.camera.rotation.x = this.player.pitch;
 
-        // ---- Player Marker Update ----
+        // ---- Player Marker Update & Animation ----
         if (this.playerMarker) {
             this.playerMarker.position.copy(this.player.pos);
-            // Sync rotation with yaw
             this.playerMarker.rotation.y = this.player.yaw;
             this.playerMarker.visible = (GameState.viewMode !== 'fps');
+
+            if (moved) {
+                this.player.walkTime += dt * 10;
+                const t = this.player.walkTime;
+                this.lArm.rotation.x = Math.sin(t) * 0.8;
+                this.rArm.rotation.x = -Math.sin(t) * 0.8;
+                this.lLeg.rotation.x = -Math.sin(t) * 0.6;
+                this.rLeg.rotation.x = Math.sin(t) * 0.6;
+                // Bounce
+                this.playerMarker.position.y = this.player.pos.y + Math.abs(Math.sin(t * 0.5)) * 0.05;
+            } else {
+                this.lArm.rotation.x = THREE.MathUtils.lerp(this.lArm.rotation.x, 0, 0.2);
+                this.rArm.rotation.x = THREE.MathUtils.lerp(this.rArm.rotation.x, 0, 0.2);
+                this.lLeg.rotation.x = THREE.MathUtils.lerp(this.lLeg.rotation.x, 0, 0.2);
+                this.rLeg.rotation.x = THREE.MathUtils.lerp(this.rLeg.rotation.x, 0, 0.2);
+            }
         }
 
         // ---- Animate lights ----
