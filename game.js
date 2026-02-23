@@ -20,8 +20,9 @@ const GameState = {
     settings: {
         sensitivity: 2.0,
         speed: 5.5,
-        motionLines: true,
-        mazeSize: 19,   // default bigger
+        motionLines: false, // Default off as requested
+        mazeSize: 19,
+        maxTime: 60,       // Duration in seconds
     },
     players: [
         { finished: false, time: 0 },
@@ -83,9 +84,8 @@ class MazeGenerator {
             }
         }
 
-        // 4. Entrance (left side row 1) & exit (right side, near bottom)
-        grid[1][0] = 0;
-        grid[this.height - 2][this.width - 1] = 0;
+        // 4. Entrance & Exit (Place triggers INSIDE the maze to keep boundaries solid)
+        // No more grid[1][0] = 0 or grid[h-2][w-1] = 0
 
         return grid;
     }
@@ -203,8 +203,6 @@ class MazeScene {
         this.scene.add(rim);
     }
 
-    // ── Player ────────────────────────────────────────────────
-    // ── Player ────────────────────────────────────────────────
     _initPlayer() {
         this.player = {
             pos: new THREE.Vector3(this.cellSize * 1.5, 1.5, this.cellSize * 1.5),
@@ -212,26 +210,51 @@ class MazeScene {
             pitch: 0,
         };
 
-        // --- AVATAR (Visible en Top-Down) ---
+        // --- AVATAR HUMANOÏDE (Détaillé) ---
         this.playerMarker = new THREE.Group();
-        const bodyMat = new THREE.MeshToonMaterial({ color: 0xFF6B00, gradientMap: CelMaterials._gradientMap(4) });
+        const mat = new THREE.MeshToonMaterial({ color: 0xFF6B00, gradientMap: CelMaterials._gradientMap(4) });
+        const blackMat = new THREE.MeshToonMaterial({ color: 0x111111 });
 
-        // Corps
-        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.6, 12), bodyMat);
-        body.position.y = 0.8;
-        this.playerMarker.add(body);
-        addOutline(body, this.playerMarker, 0.05);
+        // Corps (Torse)
+        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.0, 0.4), mat);
+        torso.position.y = 1.0;
+        this.playerMarker.add(torso);
+        addOutline(torso, this.playerMarker, 0.05);
 
         // Tête
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), bodyMat);
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.45), mat);
         head.position.y = 1.8;
         this.playerMarker.add(head);
         addOutline(head, this.playerMarker, 0.05);
 
-        // Visière/Yeux (pour la direction)
-        const visor = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.1, 0.2), new THREE.MeshBasicMaterial({ color: 0x00FFFF }));
-        visor.position.set(0, 1.8, -0.25);
+        // Visière
+        const visor = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.1, 0.1), new THREE.MeshBasicMaterial({ color: 0x00FFFF }));
+        visor.position.set(0, 1.85, -0.23);
         this.playerMarker.add(visor);
+
+        // Bras
+        const armGeo = new THREE.BoxGeometry(0.2, 0.8, 0.2);
+        const lArm = new THREE.Mesh(armGeo, mat);
+        lArm.position.set(-0.45, 1.1, 0);
+        this.playerMarker.add(lArm);
+        addOutline(lArm, this.playerMarker, 0.05);
+
+        const rArm = new THREE.Mesh(armGeo, mat);
+        rArm.position.set(0.45, 1.1, 0);
+        this.playerMarker.add(rArm);
+        addOutline(rArm, this.playerMarker, 0.05);
+
+        // Jambes
+        const legGeo = new THREE.BoxGeometry(0.25, 0.85, 0.25);
+        const lLeg = new THREE.Mesh(legGeo, mat);
+        lLeg.position.set(-0.2, 0.4, 0);
+        this.playerMarker.add(lLeg);
+        addOutline(lLeg, this.playerMarker, 0.05);
+
+        const rLeg = new THREE.Mesh(legGeo, mat);
+        rLeg.position.set(0.2, 0.4, 0);
+        this.playerMarker.add(rLeg);
+        addOutline(rLeg, this.playerMarker, 0.05);
 
         this.scene.add(this.playerMarker);
 
@@ -246,25 +269,41 @@ class MazeScene {
     _buildWeapon() {
         this.weaponGroup = new THREE.Group();
         this.camera.add(this.weaponGroup);
-        // Position des mains : en bas, légèrement écartées
-        this.weaponGroup.position.set(0, -0.3, -0.5);
+        this.weaponGroup.position.set(0, -0.4, -0.6);
 
-        const handGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
-        const handMat = new THREE.MeshToonMaterial({ color: 0xC68642, gradientMap: CelMaterials._gradientMap(3) });
+        const skinColor = 0xC68642;
+        const handMat = new THREE.MeshToonMaterial({ color: skinColor, gradientMap: CelMaterials._gradientMap(3) });
 
-        // Main Gauche
-        const leftHand = new THREE.Mesh(handGeo, handMat);
-        leftHand.position.set(-0.25, -0.1, 0.1);
-        leftHand.rotation.set(0.2, -0.1, 0.1);
-        this.weaponGroup.add(leftHand);
-        addOutline(leftHand, this.weaponGroup, 0.03);
+        const createHand = (isLeft) => {
+            const hand = new THREE.Group();
+            // Paume
+            const palm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.1), handMat);
+            hand.add(palm);
+            addOutline(palm, hand, 0.05);
 
-        // Main Droite
-        const rightHand = new THREE.Mesh(handGeo, handMat);
-        rightHand.position.set(0.25, -0.1, 0.1);
-        rightHand.rotation.set(0.2, 0.1, -0.1);
-        this.weaponGroup.add(rightHand);
-        addOutline(rightHand, this.weaponGroup, 0.03);
+            // Doigts (simplifiés mais présents)
+            for (let i = 0; i < 4; i++) {
+                const finger = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 0.04), handMat);
+                finger.position.set(-0.06 + i * 0.04, 0.12, 0);
+                hand.add(finger);
+            }
+            // Pouce
+            const thumb = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.04), handMat);
+            thumb.position.set(isLeft ? 0.1 : -0.1, 0.04, 0);
+            hand.add(thumb);
+
+            return hand;
+        };
+
+        this.leftHand = createHand(true);
+        this.leftHand.position.set(-0.35, -0.1, 0.1);
+        this.leftHand.rotation.set(0.4, 0.2, 0.1);
+        this.weaponGroup.add(this.leftHand);
+
+        this.rightHand = createHand(false);
+        this.rightHand.position.set(0.35, -0.1, 0.1);
+        this.rightHand.rotation.set(0.4, -0.2, -0.1);
+        this.weaponGroup.add(this.rightHand);
 
         this.weaponGroup.userData.basePos = this.weaponGroup.position.clone();
         this.weaponGroup.userData.bobTime = 0;
@@ -391,7 +430,7 @@ class MazeScene {
 
         // Exit marker
         const exitRow = this.mazeH - 2;
-        const exitCol = this.mazeW - 1;
+        const exitCol = this.mazeW - 2;
         this.exitPos.set(exitCol * C + C / 2, 0.1, exitRow * C + C / 2);
 
         const exitMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.12, 10), CelMaterials.exitMat());
@@ -537,10 +576,23 @@ class MazeScene {
         const moveDir = new THREE.Vector3();
         let moved = false;
 
-        if (this.keys['KeyW'] || this.keys['ArrowUp']) { moveDir.addScaledVector(forward, 1); moved = true; }
-        if (this.keys['KeyS'] || this.keys['ArrowDown']) { moveDir.addScaledVector(forward, -1); moved = true; }
-        if (this.keys['KeyA'] || this.keys['ArrowLeft']) { moveDir.addScaledVector(right, -1); moved = true; }
-        if (this.keys['KeyD'] || this.keys['ArrowRight']) { moveDir.addScaledVector(right, 1); moved = true; }
+        if (this.playerIndex === 0) {
+            // Player 1 controls
+            if (this.keys['KeyW']) { moveDir.addScaledVector(forward, 1); moved = true; }
+            if (this.keys['KeyS']) { moveDir.addScaledVector(forward, -1); moved = true; }
+            if (this.keys['KeyA']) { moveDir.addScaledVector(right, -1); moved = true; }
+            if (this.keys['KeyD']) { moveDir.addScaledVector(right, 1); moved = true; }
+        } else {
+            // Player 2 controls
+            if (this.keys['KeyI'] || this.keys['ArrowUp']) { moveDir.addScaledVector(forward, 1); moved = true; }
+            if (this.keys['KeyK'] || this.keys['ArrowDown']) { moveDir.addScaledVector(forward, -1); moved = true; }
+            if (this.keys['KeyJ']) { moveDir.addScaledVector(right, -1); moved = true; }
+            if (this.keys['KeyL']) { moveDir.addScaledVector(right, 1); moved = true; }
+
+            // Rotation for P2 (Arrows)
+            if (this.keys['ArrowLeft']) this.player.yaw += 0.05;
+            if (this.keys['ArrowRight']) this.player.yaw -= 0.05;
+        }
 
         if (moveDir.lengthSq() > 0) moveDir.normalize();
 
@@ -552,8 +604,8 @@ class MazeScene {
         if (!this._checkCollision(nx, this.player.pos.z)) this.player.pos.x = nx;
         if (!this._checkCollision(this.player.pos.x, nz)) this.player.pos.z = nz;
 
-        // ---- Motion lines ----
-        if (moved && S.motionLines && Math.random() < 0.08) spawnMotionLine();
+        // ---- Motion lines Removed ----
+        // No effects when running as requested
 
         // ---- Weapon bob ----
         if (moved) {
@@ -573,6 +625,7 @@ class MazeScene {
         // ---- Player Marker Update ----
         if (this.playerMarker) {
             this.playerMarker.position.copy(this.player.pos);
+            // Sync rotation with yaw
             this.playerMarker.rotation.y = this.player.yaw;
             this.playerMarker.visible = (GameState.viewMode !== 'fps');
         }
@@ -717,16 +770,28 @@ function resetTimer() {
 }
 
 function updateTimerDisplay() {
+    const duration = GameState.settings.maxTime * 1000;
     const elapsed = Date.now() - GameState.startTime;
-    GameState.elapsed = elapsed;
-    const mins = Math.floor(elapsed / 60000);
-    const secs = Math.floor((elapsed % 60000) / 1000);
-    const ms = Math.floor((elapsed % 1000) / 10);
+    const timeLeft = Math.max(0, duration - elapsed);
+
+    GameState.elapsed = elapsed; // used for stats
+
+    const mins = Math.floor(timeLeft / 60000);
+    const secs = Math.floor((timeLeft % 60000) / 1000);
+    const ms = Math.floor((timeLeft % 1000) / 10);
 
     const el = document.getElementById('timer-display');
     const me = document.getElementById('timer-ms');
-    if (el) el.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    if (el) {
+        el.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        if (timeLeft < 10000) el.style.color = '#FF2020'; // Alarm red
+        else el.style.color = '';
+    }
     if (me) me.textContent = String(ms).padStart(2, '0');
+
+    if (timeLeft <= 0 && GameState.running) {
+        // Time out logic could go here, or just let them finish with 00:00
+    }
 }
 
 function formatTime(ms) {
@@ -934,8 +999,15 @@ function startSplitGame() {
     splitScene1.resize(c1.width, c1.height);
     splitScene2.resize(c2.width, c2.height);
 
-    // P2 uses IJKL + arrow turn
-    splitScene2._initInputP2();
+    // P1 & P2 now use their own logic inside update()
+
+    // Reset hint animation
+    const hint = document.getElementById('split-controls-hint');
+    if (hint) {
+        hint.style.animation = 'none';
+        hint.offsetHeight; /* trigger reflow */
+        hint.style.animation = '';
+    }
 
     // P1 lock on click
     c1.addEventListener('click', () => { if (!splitScene1.mouse.locked) c1.requestPointerLock(); });
@@ -960,31 +1032,19 @@ function startSplitGame() {
         splitScene2.update(dt);
         splitScene1.render();
         splitScene2.render();
+
+        const duration = GameState.settings.maxTime * 1000;
         const elapsed = Date.now() - splitStart;
-        document.getElementById('timer-p1').textContent = formatTime(elapsed);
-        document.getElementById('timer-p2').textContent = formatTime(elapsed);
+        const timeLeft = Math.max(0, duration - elapsed);
+        const timeStr = formatTime(timeLeft);
+
+        document.getElementById('timer-p1').textContent = timeStr;
+        document.getElementById('timer-p2').textContent = timeStr;
     }
     animFrameId = requestAnimationFrame(splitLoop);
 }
 
-// P2 input — IJKL + arrow keys for turning
-MazeScene.prototype._initInputP2 = function () {
-    this.keys = {};
-    this.mouse = { dx: 0, dy: 0, locked: false };
-
-    const map = { KeyI: 'KeyW', KeyK: 'KeyS', KeyJ: 'KeyA', KeyL: 'KeyD' };
-
-    window.addEventListener('keydown', e => {
-        const m = map[e.code];
-        if (m) this.keys[m] = true;
-        if (e.code === 'ArrowLeft') this.player.yaw += 0.06;
-        if (e.code === 'ArrowRight') this.player.yaw -= 0.06;
-    });
-    window.addEventListener('keyup', e => {
-        const m = map[e.code];
-        if (m) this.keys[m] = false;
-    });
-};
+// Redundant _initInputP2 removed
 
 // ============================================================
 // UI
