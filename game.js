@@ -558,8 +558,8 @@ class MazeScene {
         const S = GameState.settings;
         const sens = S.sensitivity * 0.0018;
 
-        // ---- Mouse look (FPS only) ----
-        if (this.mouse.locked && GameState.viewMode === 'fps') {
+        // ---- Mouse look (FPS only, P1 only) ----
+        if (this.mouse.locked && GameState.viewMode === 'fps' && this.playerIndex === 0) {
             this.player.yaw -= this.mouse.dx * sens;
             this.player.pitch -= this.mouse.dy * sens;
             this.player.pitch = Math.max(-Math.PI / 2.8, Math.min(Math.PI / 2.8, this.player.pitch));
@@ -567,31 +567,52 @@ class MazeScene {
         this.mouse.dx = 0;
         this.mouse.dy = 0;
 
-        // ---- Movement ----
-        const sin = Math.sin(this.player.yaw);
-        const cos = Math.cos(this.player.yaw);
-        const forward = new THREE.Vector3(-sin, 0, -cos);
-        const right = new THREE.Vector3(cos, 0, -sin);
+        // ---- Movement Directions ----
+        const isTopDown = (GameState.viewMode === 'topdown');
+        let fwdVec, rightVec;
+
+        if (isTopDown) {
+            // Screen-space absolute controls for Top-Down
+            fwdVec = new THREE.Vector3(0, 0, -1); // North/Up
+            rightVec = new THREE.Vector3(1, 0, 0); // East/Right
+        } else {
+            // Relative controls for FPS
+            const sin = Math.sin(this.player.yaw);
+            const cos = Math.cos(this.player.yaw);
+            fwdVec = new THREE.Vector3(-sin, 0, -cos);
+            rightVec = new THREE.Vector3(cos, 0, -sin);
+        }
 
         const moveDir = new THREE.Vector3();
         let moved = false;
 
         if (this.playerIndex === 0) {
             // Player 1 controls
-            if (this.keys['KeyW']) { moveDir.addScaledVector(forward, 1); moved = true; }
-            if (this.keys['KeyS']) { moveDir.addScaledVector(forward, -1); moved = true; }
-            if (this.keys['KeyA']) { moveDir.addScaledVector(right, -1); moved = true; }
-            if (this.keys['KeyD']) { moveDir.addScaledVector(right, 1); moved = true; }
+            if (this.keys['KeyW']) { moveDir.addScaledVector(fwdVec, 1); moved = true; }
+            if (this.keys['KeyS']) { moveDir.addScaledVector(fwdVec, -1); moved = true; }
+            if (this.keys['KeyA']) { moveDir.addScaledVector(rightVec, -1); moved = true; }
+            if (this.keys['KeyD']) { moveDir.addScaledVector(rightVec, 1); moved = true; }
         } else {
             // Player 2 controls
-            if (this.keys['KeyI'] || this.keys['ArrowUp']) { moveDir.addScaledVector(forward, 1); moved = true; }
-            if (this.keys['KeyK'] || this.keys['ArrowDown']) { moveDir.addScaledVector(forward, -1); moved = true; }
-            if (this.keys['KeyJ']) { moveDir.addScaledVector(right, -1); moved = true; }
-            if (this.keys['KeyL']) { moveDir.addScaledVector(right, 1); moved = true; }
+            if (this.keys['KeyI'] || this.keys['ArrowUp']) { moveDir.addScaledVector(fwdVec, 1); moved = true; }
+            if (this.keys['KeyK'] || this.keys['ArrowDown']) { moveDir.addScaledVector(fwdVec, -1); moved = true; }
+            if (this.keys['KeyJ'] || this.keys['ArrowLeft']) { moveDir.addScaledVector(rightVec, -1); moved = true; }
+            if (this.keys['KeyL'] || this.keys['ArrowRight']) { moveDir.addScaledVector(rightVec, 1); moved = true; }
 
-            // Rotation for P2 (Arrows)
-            if (this.keys['ArrowLeft']) this.player.yaw += 0.05;
-            if (this.keys['ArrowRight']) this.player.yaw -= 0.05;
+            // Automatic rotation for P2 in Top-Down is handled below. 
+            // In FPS, P2 still needs manual rotation keys if mouse is disabled.
+            if (!isTopDown) {
+                if (this.keys['ArrowLeft'] || this.keys['KeyJ']) this.player.yaw += 0.05;
+                if (this.keys['ArrowRight'] || this.keys['KeyL']) this.player.yaw -= 0.05;
+            }
+        }
+
+        if (moveDir.lengthSq() > 0) {
+            moveDir.normalize();
+            // In Top-Down, face the movement direction automatically
+            if (isTopDown) {
+                this.player.yaw = Math.atan2(-moveDir.x, -moveDir.z);
+            }
         }
 
         if (moveDir.lengthSq() > 0) moveDir.normalize();
