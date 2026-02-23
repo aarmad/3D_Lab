@@ -318,8 +318,14 @@ class MazeScene {
         this.mouse = { dx: 0, dy: 0, locked: false };
 
         // Keyboard
-        window.addEventListener('keydown', e => { this.keys[e.code] = true; });
-        window.addEventListener('keyup', e => { this.keys[e.code] = false; });
+        window.addEventListener('keydown', e => {
+            this.keys[e.code] = true;
+            if (e.key) this.keys[e.key.toLowerCase()] = true;
+        });
+        window.addEventListener('keyup', e => {
+            this.keys[e.code] = false;
+            if (e.key) this.keys[e.key.toLowerCase()] = false;
+        });
 
         // Pointer lock state
         document.addEventListener('pointerlockchange', () => {
@@ -562,8 +568,15 @@ class MazeScene {
         const sens = S.sensitivity * 0.0018;
 
         // ---- Jumping ----
-        const jumpKey = (this.playerIndex === 0) ? 'Space' : 'KeyM';
-        if (this.keys[jumpKey] && this.player.isGrounded) {
+        let jumping = false;
+        if (this.playerIndex === 0) {
+            jumping = this.keys['Space'];
+        } else {
+            // Supporte KeyM (QWERTY M), Semicolon (AZERTY M) et le caractère 'm'
+            jumping = this.keys['KeyM'] || this.keys['Semicolon'] || this.keys['m'];
+        }
+
+        if (jumping && this.player.isGrounded) {
             this.player.velY = 7.5;
             this.player.isGrounded = false;
         }
