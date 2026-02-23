@@ -212,7 +212,7 @@ class MazeScene {
 
         // --- AVATAR HUMANOÏDE (Détaillé) ---
         this.playerMarker = new THREE.Group();
-        const mat = new THREE.MeshToonMaterial({ color: 0xFF6B00, gradientMap: CelMaterials._gradientMap(4) });
+        const mat = new THREE.MeshToonMaterial({ color: 0x00FFFF, gradientMap: CelMaterials._gradientMap(4) });
         const blackMat = new THREE.MeshToonMaterial({ color: 0x111111 });
 
         // Corps (Torse)
@@ -228,7 +228,7 @@ class MazeScene {
         addOutline(head, this.playerMarker, 0.05);
 
         // Visière
-        const visor = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.1, 0.1), new THREE.MeshBasicMaterial({ color: 0x00FFFF }));
+        const visor = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.1, 0.1), new THREE.MeshBasicMaterial({ color: 0xFF00FF }));
         visor.position.set(0, 1.85, -0.23);
         this.playerMarker.add(visor);
 
@@ -671,7 +671,15 @@ class MazeScene {
     }
 
     render() {
-        const cam = GameState.viewMode === 'fps' ? this.camera : this.topCamera;
+        const isTop = (GameState.viewMode !== 'fps');
+        const cam = isTop ? this.topCamera : this.camera;
+
+        // Adjust fog for view mode: push it far in topdown so textures/colors are visible
+        if (this.scene.fog) {
+            this.scene.fog.near = isTop ? 50 : 10;
+            this.scene.fog.far = isTop ? 250 : 38;
+        }
+
         this.renderer.render(this.scene, cam);
     }
 
