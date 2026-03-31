@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,4 95,96 5,96' fill='%23FFD700'/></svg>">
     <title>MAZE RUNNER X — Cel-Shaded Chaos</title>
     <meta name="description" content="Labyrinthe 3D immersif en style Borderlands / animé cel-shading avec Three.js" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -13,6 +13,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Bangers&family=Oswald:wght@700&family=Permanent+Marker&display=swap"
         rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
 
 </head>
 
@@ -29,13 +30,13 @@
             </div>
             <div class="menu-buttons">
                 <button class="btn-comic btn-primary" id="btn-solo">
-                    <span class="btn-icon">⚡</span> SOLO MISSION
+                    <img class="btn-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ffcc00' d='M13 2l-5 9h10l-5-9zm-2 9V22h2V11h-2z'/%3E%3C/svg%3E" alt="solo" height="18"/> SOLO MISSION
                 </button>
                 <button class="btn-comic btn-secondary" id="btn-multi">
-                    <span class="btn-icon">💥</span> SPLIT-SCREEN DUEL
+                    <img class="btn-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2300ccff' d='M12 2l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z'/%3E%3C/svg%3E" alt="multi" height="18"/> SPLIT-SCREEN DUEL
                 </button>
                 <button class="btn-comic btn-tertiary" id="btn-settings">
-                    <span class="btn-icon">⚙</span> RÉGLAGES
+                    <img class="btn-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ff77ff' d='M12 8a4 4 0 014 4 4 4 0 01-4 4 4 4 0 010-8zm7.43 4.61l-1.94-.56a7.01 7.01 0 00-.73-1.45l1.22-1.8-1.4-1.4-1.8 1.22a7.01 7.01 0 00-1.45-.73l-.56-1.94H9.25l-.56 1.94a7.01 7.01 0 00-1.45.73L5.44 8.2 4.04 9.6l1.22 1.8a7.01 7.01 0 00-.73 1.45l-1.94.56v2.8l1.94.56c.16.53.38 1.04.73 1.45l-1.22 1.8 1.4 1.4 1.8-1.22c.41.35.92.57 1.45.73l.56 1.94h2.8l.56-1.94c.53-.16 1.04-.38 1.45-.73l1.8 1.22 1.4-1.4-1.22-1.8c.35-.41.57-.92.73-1.45l1.94-.56v-2.8z'/%3E%3C/svg%3E" alt="settings" height="18"/> RÉGLAGES
                 </button>
             </div>
             <div class="menu-graffiti">
@@ -76,9 +77,12 @@
 
         <!-- Vue mode -->
         <div id="view-toggle-btn" class="comic-btn" title="Changer de vue">
-            <span id="view-icon">👁</span>
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ff00aa' d='M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5S14.49 16.5 12 16.5z'/%3E%3Ccircle fill='%23ff00aa' cx='12' cy='12' r='2.5'/%3E%3C/svg%3E" height="18" alt="POV" />
             <span id="view-label">FPS</span>
         </div>
+        <button id="fullscreen-btn" class="comic-btn" title="Basculer plein écran">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ffff00' d='M7 14H5v5h5v-2H7v-3zm0-4h2V7h3V5H7v5zm10 8h-3v2h5v-5h-2v3zm-3-8V5h-2v3h-3V5h-2v5h7z'/%3E%3C/svg%3E" height="18" alt="Fullscreen" />
+        </button>
 
         <!-- Canvas Three.js -->
         <canvas id="game-canvas"></canvas>
@@ -94,12 +98,12 @@
                 </div>
             </div>
             <div id="action-buttons">
-                <button class="action-btn" id="btn-jump">↑</button>
+                <button class="action-btn" id="btn-jump">SAUT</button>
             </div>
         </div>
 
         <!-- Pause -->
-        <button id="pause-btn" class="comic-btn">⏸ PAUSE</button>
+        <button id="pause-btn" class="comic-btn">PAUSE</button>
     </div>
 
     <!-- ===== SPLIT-SCREEN DUEL ===== -->
@@ -126,9 +130,9 @@
 
         <!-- Controls notification -->
         <div id="split-controls-hint">
-            <div class="hint-p1">P1: WASD + [ESPACE] SAUTER</div>
+            <div class="hint-p1">P1: WASD + [ESPACE] SAUTER<br>[U] changer POV</div>
             <div class="hint-vs">VS</div>
-            <div class="hint-p2">P2: IJKL + [M] SAUTER<br>FLÈCHES: CAMÉRA</div>
+            <div class="hint-p2">P2: IJKL + [M] SAUTER<br>[O] changer POV</div>
         </div>
         <!-- Winner banner -->
         <div id="split-winner"
@@ -157,9 +161,9 @@
                 </div>
             </div>
             <div class="victory-buttons">
-                <button class="btn-comic btn-primary" id="btn-next-level">NIVEAU SUIVANT ⚡</button>
-                <button class="btn-comic btn-secondary" id="btn-retry">REJOUER 🔄</button>
-                <button class="btn-comic btn-tertiary" id="btn-menu-victory">MENU 🏠</button>
+                <button class="btn-comic btn-primary" id="btn-next-level">NIVEAU SUIVANT</button>
+                <button class="btn-comic btn-secondary" id="btn-retry">REJOUER</button>
+                <button class="btn-comic btn-tertiary" id="btn-menu-victory">MENU</button>
             </div>
         </div>
         <div class="victory-particles" id="victory-particles"></div>
@@ -169,16 +173,16 @@
     <div id="pause-menu" class="screen">
         <div class="pause-content">
             <h2 class="pause-title">PAUSE</h2>
-            <button class="btn-comic btn-primary" id="btn-resume">▶ REPRENDRE</button>
-            <button class="btn-comic btn-secondary" id="btn-restart">🔄 RECOMMENCER</button>
-            <button class="btn-comic btn-tertiary" id="btn-menu-pause">🏠 MENU</button>
+            <button class="btn-comic btn-primary" id="btn-resume">REPRENDRE</button>
+            <button class="btn-comic btn-secondary" id="btn-restart">RECOMMENCER</button>
+            <button class="btn-comic btn-tertiary" id="btn-menu-pause">MENU</button>
         </div>
     </div>
 
     <!-- ===== SETTINGS ===== -->
     <div id="settings-screen" class="screen">
         <div class="settings-content">
-            <h2 class="settings-title">⚙ RÉGLAGES</h2>
+            <h2 class="settings-title">RÉGLAGES</h2>
             <div class="setting-row">
                 <label class="setting-label">SENSIBILITÉ SOURIS</label>
                 <input type="range" id="sensitivity-slider" min="0.5" max="5" step="0.1" value="2"
@@ -211,7 +215,7 @@
     <!-- Pointer lock overlay -->
     <!-- Hint created dynamically by JS -->
 
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 
 </html>

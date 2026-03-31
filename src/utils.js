@@ -9,9 +9,19 @@ export class CelMaterials {
         return tex;
     }
 
-    static wallMat() { return new THREE.MeshToonMaterial({ color: 0x8B6914, gradientMap: CelMaterials._gradientMap(4) }); }
-    static floorMat() { return new THREE.MeshToonMaterial({ color: 0x1A1A3E, gradientMap: CelMaterials._gradientMap(4) }); }
-    static ceilingMat() { return new THREE.MeshToonMaterial({ color: 0x0D0D2B, gradientMap: CelMaterials._gradientMap(3) }); }
+    static wallMat() {
+        return new THREE.MeshToonMaterial({
+            color: 0x8B6914,
+            gradientMap: CelMaterials._gradientMap(5),
+            flatShading: true,
+            emissive: 0x442800,
+            emissiveIntensity: 0.25,
+            metalness: 0.1,
+            roughness: 0.8,
+        });
+    }
+    static floorMat() { return new THREE.MeshToonMaterial({ color: 0x1A1A3E, gradientMap: CelMaterials._gradientMap(4), flatShading: true }); }
+    static ceilingMat() { return new THREE.MeshToonMaterial({ color: 0x0D0D2B, gradientMap: CelMaterials._gradientMap(3), flatShading: true }); }
     static exitMat() {
         return new THREE.MeshToonMaterial({
             color: 0x00FFAA, emissive: 0x00AA66,

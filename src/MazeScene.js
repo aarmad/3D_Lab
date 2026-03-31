@@ -2,19 +2,29 @@ import * as THREE from 'three';
 import { GameState } from './GameState.js';
 import { CelMaterials, addOutline, spawnMotionLine } from './utils.js';
 
+// MazeScene est le noyau 3D : rendu et logique du déplacement d'un joueur dans un labyrinthe.
+// Chaque joueur split-screen a sa propre instance.
 export class MazeScene {
     constructor(canvas, playerIndex = 0, onExit = null) {
+        // Canvas WebGL associé à cette vue
         this.canvas = canvas;
+        // 0 = joueur 1, 1 = joueur 2 (split-screen)
         this.playerIndex = playerIndex;
+        // callback quand le joueur atteint la sortie
         this.onExit = onExit;
-        this.cellSize = 2;
-        this.wallHeight = 3.2;
+        // grille logique du labyrinthe
         this.mazeGrid = null;
+        // dimensions logiques du labyrinthe
+        this.mazeW = 0;
+        this.mazeH = 0;
+        this.cellSize = 2;
+        this.wallHeight = 4.5;
         this.mazeW = 0;
         this.mazeH = 0;
         this.exitPos = new THREE.Vector3();
         this.corridorLights = [];
         this.exitLight = null;
+        this.viewMode = GameState.viewMode;
 
         this._initRenderer();
         this._initScene();
@@ -23,8 +33,10 @@ export class MazeScene {
         this._initInput();
     }
 
+    // Initialise le renderer Threejs (WebGL) en lien avec le canvas HTML.
     _initRenderer() {
         this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: false });
+        // pixel ratio clippé pour limiter le workload sur les écrans haute densité
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
         this.renderer.setSize(
             this.canvas.clientWidth || window.innerWidth,
@@ -168,6 +180,15 @@ export class MazeScene {
         });
     }
 
+    resize(width, height) {
+        if (!this.renderer || width <= 0 || height <= 0) return;
+        this.renderer.setSize(width, height);
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
+        this.topCamera.aspect = width / height;
+        this.topCamera.updateProjectionMatrix();
+    }
+
     requestLock() { this.canvas.requestPointerLock(); }
 
     buildMaze(grid) {
@@ -175,12 +196,19 @@ export class MazeScene {
         this.mazeH = grid.length;
         this.mazeW = grid[0].length;
         
+        // 1) Nettoyage de l’ancienne grille pour éviter artefacts.
+        //    Ce morceau est crucial pour éviter que, en changeant de niveau / de vue, des murs invalides restent visibles.
+        if (this.wallGroup) {
+            this.scene.remove(this.wallGroup);
+            this.wallGroup = null;
+        }
         const toRemove = [];
         this.scene.traverse(o => { if (o.userData.isMaze) toRemove.push(o); });
         toRemove.forEach(o => this.scene.remove(o));
         this.corridorLights.forEach(l => this.scene.remove(l));
         this.corridorLights = [];
 
+        // 2) Transformation logique -> géométrie
         const C = this.cellSize, H = this.wallHeight;
         const floor = new THREE.Mesh(new THREE.PlaneGeometry(this.mazeW * C, this.mazeH * C), CelMaterials.floorMat());
         floor.rotation.x = -Math.PI / 2;
@@ -203,15 +231,27 @@ export class MazeScene {
         }
 
         const wallGeo = new THREE.BoxGeometry(C, H, C);
-        const wallMesh = new THREE.InstancedMesh(wallGeo, CelMaterials.wallMat(), wallPositions.length);
-        wallMesh.castShadow = true; wallMesh.receiveShadow = true;
-        wallMesh.userData.isMaze = true;
-        const dummy = new THREE.Object3D();
-        wallPositions.forEach((p, i) => {
-            dummy.position.set(p.x, p.y, p.z); dummy.updateMatrix();
-            wallMesh.setMatrixAt(i, dummy.matrix);
+        this.wallGroup = new THREE.Group();
+        this.wallGroup.userData.isMaze = true;
+
+        wallPositions.forEach(p => {
+            const wall = new THREE.Mesh(wallGeo, CelMaterials.wallMat());
+            wall.position.set(p.x, p.y, p.z);
+            wall.castShadow = true;
+            wall.receiveShadow = true;
+            wall.userData.isMaze = true;
+            this.wallGroup.add(wall);
+
+            const edge = new THREE.LineSegments(
+                new THREE.EdgesGeometry(wallGeo),
+                new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.85 })
+            );
+            edge.position.copy(wall.position);
+            edge.userData.isMaze = true;
+            this.wallGroup.add(edge);
         });
-        this.scene.add(wallMesh);
+
+        this.scene.add(this.wallGroup);
 
         const exitRow = this.mazeH - 2, exitCol = this.mazeW - 2;
         this.exitPos.set(exitCol * C + C / 2, 0.1, exitRow * C + C / 2);
@@ -250,21 +290,25 @@ export class MazeScene {
         return false;
     }
 
+    // Cette méthode est appelée chaque frame par la boucle de jeu (soloLoop / splitLoop).
+    // Elle gère les entrées clavier/souris, le déplacement, la collision et le test de sortie.
     update(dt) {
         if (!GameState.running) return;
         const S = GameState.settings, sens = S.sensitivity * 0.0018;
 
+        // Gestion du saut (différent P1 / P2)
         let jumping = this.playerIndex === 0 ? this.keys['Space'] : (this.keys['KeyM'] || this.keys['Semicolon'] || this.keys['m']);
         if (jumping && this.player.isGrounded) { this.player.velY = 7.5; this.player.isGrounded = false; }
         this.player.velY -= 20 * dt; this.player.pos.y += this.player.velY * dt;
         if (this.player.pos.y <= 1.5) { this.player.pos.y = 1.5; this.player.velY = 0; this.player.isGrounded = true; }
 
-        if (this.mouse.locked && GameState.viewMode === 'fps' && this.playerIndex === 0) {
+        const mode = this.viewMode || GameState.viewMode;
+        if (this.mouse.locked && mode === 'fps' && this.playerIndex === 0) {
             this.player.yaw -= this.mouse.dx * sens; this.player.pitch -= this.mouse.dy * sens;
             this.player.pitch = Math.max(-Math.PI / 2.8, Math.min(Math.PI / 2.8, this.player.pitch));
         }
 
-        if (this.playerIndex === 1 && GameState.viewMode === 'fps') {
+        if (this.playerIndex === 1 && mode === 'fps') {
             if (this.keys['ArrowLeft']) this.player.yaw += 2.5 * dt;
             if (this.keys['ArrowRight']) this.player.yaw -= 2.5 * dt;
             if (this.keys['ArrowUp']) this.player.pitch += 1.8 * dt;
@@ -273,7 +317,7 @@ export class MazeScene {
         }
         this.mouse.dx = 0; this.mouse.dy = 0;
 
-        const isTop = (GameState.viewMode === 'topdown');
+        const isTop = (mode === 'topdown');
         let fwdVec = isTop ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(-Math.sin(this.player.yaw), 0, -Math.cos(this.player.yaw));
         let rightVec = isTop ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(Math.cos(this.player.yaw), 0, -Math.sin(this.player.yaw));
 
@@ -318,7 +362,8 @@ export class MazeScene {
     }
 
     render() {
-        const isTop = (GameState.viewMode !== 'fps');
+        const mode = this.viewMode || GameState.viewMode;
+        const isTop = (mode !== 'fps');
         if (this.scene.fog) { this.scene.fog.near = isTop ? 50 : 10; this.scene.fog.far = isTop ? 250 : 38; }
         this.renderer.render(this.scene, isTop ? this.topCamera : this.camera);
     }
